@@ -129,3 +129,24 @@ func (space *Space) Select(indexNo, offset, limit int32, keys ... *SelectField) 
 
 	return
 }
+
+func (tuple *Tuple) PackTuple(buffer *bytes.Buffer) {
+	binary.Write(buffer, binary.LittleEndian, len(tuple.Fields))
+
+	for _, key := range tuple.Fields {
+		fieldLength := key.Fields.Len()
+		buf := make([]byte, 8)
+		l := binary.PutUvarint(buf, uint64(fieldLength))
+		_, err = body.Write(buf[0:l])
+		if err != nil {
+			return
+		}
+		_, err = body.Write(key.Fields.Bytes())
+		if err != nil {
+			return
+		}
+	}
+
+}
+
+// func (space *Space) Insert()
