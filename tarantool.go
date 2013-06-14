@@ -149,7 +149,7 @@ func (space *Space) Insert(tuple []TupleField, returnTuple bool) (tuples *TupleR
 	return
 }
 
-func (space *Space) Upsert(tuple []TupleField, returnTuple bool) (tuples *TupleResponse, err error) {
+func (space *Space) Add(tuple []TupleField, returnTuple bool) (tuples *TupleResponse, err error) {
 	flags := int32(2)
 	tuples, err = space.insert(flags, returnTuple, tuple)
 	return

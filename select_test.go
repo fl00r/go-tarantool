@@ -38,19 +38,21 @@ func TestSelect(t *testing.T) {
 	space := conn.Space(1)
 
 	tuple1 := []TupleField{ String("Linda"), Int32(3), String("rider"), Int32(21) }
-	res, err = space.Insert(tuple1, true)
+	res, err = space.Insert(tuple1, false)
 	if err != nil {
 		t.Errorf("Error: %s", err.Error())
 	}
 
-	for i := int32(0); i < res.Count; i++ {
-		emp := &Employee{}
-		err = emp.Unpack(res.Tuples[i].Fields)
-		if err != nil {
-			t.Errorf("Error: %s", err.Error())
-		}
-		fmt.Println(emp)
-	}
+	fmt.Println(res.Count)
+
+	// for i := int32(0); i < res.Count; i++ {
+	// 	emp := &Employee{}
+	// 	err = emp.Unpack(res.Tuples[i].Fields)
+	// 	if err != nil {
+	// 		t.Errorf("Error: %s", err.Error())
+	// 	}
+	// 	fmt.Println(emp)
+	// }
 
 
 
