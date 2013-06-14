@@ -145,22 +145,30 @@ func (space *Space) Select(indexNo, offset, limit int32, typeToReturn TypeToRetu
 
 func (space *Space) Insert(tuple []TupleField, returnTuple bool) (tuples *TupleResponse, err error) {
 	flags := int32(0)
-	if returnTuple == true {
-		flags |= 1
-	}
-	tuples, err = space.insert(flags, tuple)
+	tuples, err = space.insert(flags, returnTuple, tuple)
 	return
 }
 
-// func (space *Space) Upsert(tuple SelectKey, returnTuple bool) {
+func (space *Space) Upsert(tuple []TupleField, returnTuple bool) (tuples *TupleResponse, err error) {
+	flags := int32(2)
+	tuples, err = space.insert(flags, returnTuple, tuple)
+	return
 
-// }
-// func (space *Space) Replace(tuple SelectKey, returnTuple bool) {
+}
 
-// }
+func (space *Space) Replace(tuple []TupleField, returnTuple bool) (tuples *TupleResponse, err error) {
+	flags := int32(4)
+	tuples, err = space.insert(flags, returnTuple, tuple)
+	return
 
-func (space *Space) insert(flags int32, tuple []TupleField) (tuples *TupleResponse, err error) {
+}
+
+func (space *Space) insert(flags int32, returnTuple bool, tuple []TupleField) (tuples *TupleResponse, err error) {
 	body := new(bytes.Buffer)
+
+	if returnTuple == true {
+		flags |= 1
+	}
 
 	requestBody := []int32{ space.spaceNo, flags }
 	err = binary.Write(body, binary.LittleEndian, requestBody)
@@ -189,7 +197,6 @@ func (space *Space) request(requestId int32, body *bytes.Buffer) (tuples *TupleR
 		response    *iproto.Response
 	)
 
-	fmt.Println("insrt", body.Bytes())
 	response, err = space.conn.Request(requestId, body)
 	if err != nil {
 		return

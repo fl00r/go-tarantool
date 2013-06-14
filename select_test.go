@@ -37,28 +37,44 @@ func TestSelect(t *testing.T) {
 
 	space := conn.Space(1)
 
-	tuple := []TupleField{ String("Linda"), Int32(3), String("rider"), Int32(21) }
-	res, err = space.Insert(tuple, true)
+	tuple1 := []TupleField{ String("Linda"), Int32(3), String("rider"), Int32(21) }
+	res, err = space.Insert(tuple1, true)
 	if err != nil {
 		t.Errorf("Error: %s", err.Error())
 	}
-		fmt.Println(res)
 
-	// for i := int32(0); i < res.Count; i++ {
-	// 	emp := &Employee{}
-	// 	err = emp.Unpack(res.Tuples[i].Fields)
-	// 	if err != nil {
-	// 		t.Errorf("Error: %s", err.Error())
-	// 	}
-	// 	fmt.Println(emp)
-	// }
+	for i := int32(0); i < res.Count; i++ {
+		emp := &Employee{}
+		err = emp.Unpack(res.Tuples[i].Fields)
+		if err != nil {
+			t.Errorf("Error: %s", err.Error())
+		}
+		fmt.Println(emp)
+	}
 
+
+
+	tuple2 := []TupleField{ String("Linda"), Int32(3), String("monkey"), Int32(21) }
+	res, err = space.Insert(tuple2, true)
+	if err != nil {
+		t.Errorf("Error: %s", err.Error())
+	}
+
+	for i := int32(0); i < res.Count; i++ {
+		emp := &Employee{}
+		err = emp.Unpack(res.Tuples[i].Fields)
+		if err != nil {
+			t.Errorf("Error: %s", err.Error())
+		}
+		fmt.Println(emp)
+	}
 
 
 	key1 := []TupleField{ Int32(1) }
 	key2 := []TupleField{ Int32(2) }
+	key3 := []TupleField{ Int32(3) }
 	var limit int32 = 10
-	res, err = space.Select(1, 0, limit, &Employee{}, key1, key2)
+	res, err = space.Select(1, 0, limit, &Employee{}, key1, key2, key3)
 	if err != nil {
 		t.Errorf("Error: %s", err.Error())
 	}
