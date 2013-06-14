@@ -8,7 +8,7 @@ You have got space (Employee) with two indexes: `id` (field 0) and `name` (field
 
 Currently you should explicitly define how to pack your query tuples and how to unpack returned tuple. Later some Reflections will be added for simplifying API (developer will have got low level and high level APIs).
 
-So you need to define following structs: `Employee`, `SelectId` and `SelectName`.
+So you need to define following structs: `Employee`, `SelectId` and `SelectName`. Employee should support `Unpack` method (It will receives raw bytes). `SelectId` and `SelectName` should specify `Pack` method.
 
 ```go
 package main

@@ -8,6 +8,15 @@ import (
 	// "errors"
 )
 
+const (
+	SelectOp = 17
+	InsertOp = 13
+	UpdateOp = 19
+	DeleteOp = 21
+	CallOp   = 22
+	PingOp   = 65280
+)
+
 type Space struct {
 	spaceNo int32
 	conn    *iproto.IProto
@@ -40,7 +49,7 @@ type Int8 int8
 
 type String string
 
-type SelectKey interface {
+type TupleField interface {
 	Pack(*bytes.Buffer) error
 }
 
@@ -78,7 +87,7 @@ func (val String) Pack(buffer *bytes.Buffer) (err error) {
 	if err != nil {
 		return
 	}
-	err = binary.Write(buffer, binary.LittleEndian, val)
+	_, err = buffer.Write([]byte(val))
 	return
 }
 
@@ -109,7 +118,7 @@ func (conn *Connection) Space(spaceNo int32) (space *Space) {
 	return
 }
 
-func (space *Space) Select(indexNo, offset, limit int32, typeToReturn TypeToReturn, keys ... []SelectKey) (tuples *TupleResponse, err error) {
+func (space *Space) Select(indexNo, offset, limit int32, typeToReturn TypeToReturn, keys ... []TupleField) (tuples *TupleResponse, err error) {
 
 	body := new(bytes.Buffer)
 
@@ -130,12 +139,62 @@ func (space *Space) Select(indexNo, offset, limit int32, typeToReturn TypeToRetu
 		}
 	}
 
-	response, err := space.conn.Request(17, body)
+	tuples, err = space.request(SelectOp, body)
+	return
+}
+
+func (space *Space) Insert(tuple []TupleField, returnTuple bool) (tuples *TupleResponse, err error) {
+	flags := int32(0)
+	if returnTuple == true {
+		flags |= 1
+	}
+	tuples, err = space.insert(flags, tuple)
+	return
+}
+
+// func (space *Space) Upsert(tuple SelectKey, returnTuple bool) {
+
+// }
+// func (space *Space) Replace(tuple SelectKey, returnTuple bool) {
+
+// }
+
+func (space *Space) insert(flags int32, tuple []TupleField) (tuples *TupleResponse, err error) {
+	body := new(bytes.Buffer)
+
+	requestBody := []int32{ space.spaceNo, flags }
+	err = binary.Write(body, binary.LittleEndian, requestBody)
 	if err != nil {
 		return
 	}
 
-	var returnCode int32
+	err = binary.Write(body, binary.LittleEndian, int32(len(tuple)))
+	if err != nil {
+		return
+	}
+	for _, field := range tuple {
+		field.Pack(body)
+	}
+	tuples, err = space.request(InsertOp, body)
+	return
+}
+
+func (space *Space) request(requestId int32, body *bytes.Buffer) (tuples *TupleResponse, err error) {
+	var (
+		returnCode  int32
+		tuplesCount int32
+		tuplesSize  int32
+		cardinality int32
+		size        uint64
+		response    *iproto.Response
+	)
+
+	fmt.Println("insrt", body.Bytes())
+	response, err = space.conn.Request(requestId, body)
+	if err != nil {
+		return
+	}
+
 	err = binary.Read(response.Body, binary.LittleEndian, &returnCode)
 	if err != nil {
 		return
@@ -145,12 +204,6 @@ func (space *Space) Select(indexNo, offset, limit int32, typeToReturn TypeToRetu
 		err = fmt.Errorf("Return code is not 0, but %d; Error message: %s", returnCode, response.Body.String())
 		return
 	}
-
-	var (
-		tuplesCount int32
-		tuplesSize  int32
-		cardinality int32
-	)
 	err = binary.Read(response.Body, binary.LittleEndian, &tuplesCount)
 	if err != nil {
 		return
@@ -168,7 +221,6 @@ func (space *Space) Select(indexNo, offset, limit int32, typeToReturn TypeToRetu
 		}
 		tuples.Tuples[i] = Tuple{ make([][]byte, cardinality) }
 		for j := int32(0); j < cardinality; j++ {
-			var size uint64
 			size, err = binary.ReadUvarint(response.Body)
 			if err != nil {
 				return
@@ -182,4 +234,3 @@ func (space *Space) Select(indexNo, offset, limit int32, typeToReturn TypeToRetu
 	}
 	return
 }
-// func (space *Space) Insert()
