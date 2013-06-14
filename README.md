@@ -6,9 +6,9 @@
 
 You have got space (Employee) with two indexes: `id` (field 0) and `name` (field 1).
 
-Currently you should explicitly define how to pack your query tuples and how to unpack returned tuple.
+Currently you should explicitly define how to pack your query tuples and how to unpack returned tuple. Later some Reflections will be added for simplifying API (developer will have got low level and high level APIs).
 
-So you need to define `Employee` struct, `SelectIdTuple` struct and `SelectNameTuple`.
+So you need to define following structs: `Employee`, `SelectId` and `SelectName`.
 
 ```go
 package main
@@ -26,40 +26,54 @@ type Employee struct {
 	age  int8
 }
 
-type SelectIdTuple struct {
-	id int32
+type SelectId struct {
+	cardinality int32
+	id          int32
 }
 
-type SelectNameTuple struct {
-	name string
+type SelectName struct {
+	cardinality int32
+	name        string
 }
 
-func (tuple *SelectTuple) pack(buffer *bytes.Buffer) (n int, err error) {
-	<!-- tarantool.PackInt32(tuple.id) -->
-	n, err = buffer.Write(buffer.NewBuffer(tuple.Name).Bytes())
+func (tuple *SelectId) Pack(buffer *bytes.Buffer) (err error) {
+	err = binary.Write(buffer, binary.LittleEndian, tuple.cardinality)
+	if err != nil {
+		return
+	}
+	err = binary.Write(buffer, binary.LittleEndian, tuple.id)
 	return
 }
 
-func (tuple *SelectNameTuple) pack(buffer *bytes.Buffer) (n int, err error) {
-	n, err = binary.Write(buffer, binary.LittleEndian, tuple.id)
+func (tuple *SelectName) Pack(buffer *bytes.Buffer) (err error) {
+	err = binary.Write(buffer, binary.LittleEndian, tuple.cardinality)
+	if err != nil {
+		return
+	}
+	err = buffer.Write(bytes.NewBuffer(tuple.name).Bytes())
 	return
 }
 
-func (tuple Employee) unpack(buffer) (tuple *Employee) {
-	
+func (tuple Employee) Unpack(bytes [][]byte) err error {
+	err = binary.Read(bytes.NewBuffer(bytes[0]), binary.LittleEndian, &tuple.id)
+	if err != nil {
+		return
+	}
+	tuple.name = bytes.NewBuffer(bytes[1]).String()
+	tuple.job = bytes.NewBuffer(bytes[2]).String()
+	err = binary.Read(bytes.NewBuffer(bytes[0]), binary.LittleEndian, &tuple.age)
+	return
 }
-
-
 
 func main() {
 	connection = tarantool.Connect("loaclhost:33013")
 	space = connection.Space(1)
 
-	//INSERT
-	tuple = MyTuple{ 1 }
-	// box.select(0, 0, 1)
+	// INSERT
+	//
+	// SELECT
 	// indexNo, offset, limit, tuple
-	space.Insert(0, 0, 1, &SelectIdTuple{ 1, 2, 3, 4 }, &SelectIdTuple{ 2 })
+	space.Insert(0, 0, 1, &SelectId{ 1, 1 }, &SelectId{ 1, 2 })
 	// space.Select()
 	// space.Delete()
 	// space.Update()

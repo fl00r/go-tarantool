@@ -17,6 +17,14 @@ type Connection struct {
 	conn *iproto.IProto
 }
 
+type SelectRequestBody struct {
+	spaceNo int32
+	indexNo int32
+	offset  int32
+	limit   int32
+	count   int32
+}
+
 type TupleResponse struct {
 	Count  int32
 	Tuples []Tuple
@@ -26,18 +34,69 @@ type Tuple struct {
 	Fields [][]byte
 }
 
-type SelectRequestBody struct {
-	spaceNo int32
-	indexNo int32
-	offset  int32
-	limit   int32
-	count   int32
+type Int32 int32
+
+type Int8 int8
+
+type String string
+
+type SelectKey interface {
+	Pack(*bytes.Buffer) error
 }
 
-type SelectField struct {
-	Cardinality int32
-	Fields		*bytes.Buffer
+type TypeToReturn interface {
+	Unpack([][]byte) error
 }
+
+func (val Int32) Pack(buffer *bytes.Buffer) (err error) {
+	buf := make([]byte, 1)
+	binary.PutUvarint(buf, uint64(4))
+	_, err = buffer.Write(buf)
+	if err != nil {
+		return
+	}
+	err = binary.Write(buffer, binary.LittleEndian, val)
+	return
+}
+
+func (val Int8) Pack(buffer *bytes.Buffer) (err error) {
+	buf := make([]byte, 1)
+	binary.PutUvarint(buf, uint64(1))
+	_, err = buffer.Write(buf)
+	if err != nil {
+		return
+	}
+	err = binary.Write(buffer, binary.LittleEndian, val)
+	return
+}
+
+func (val String) Pack(buffer *bytes.Buffer) (err error) {
+	size := len(val)
+	buf := make([]byte, 8)
+	l := binary.PutUvarint(buf, uint64(size))
+	_, err = buffer.Write(buf[0:l])
+	if err != nil {
+		return
+	}
+	err = binary.Write(buffer, binary.LittleEndian, val)
+	return
+}
+
+func (val *Int32) Unpack(packet []byte) (err error) {
+	err = binary.Read(bytes.NewBuffer(packet), binary.LittleEndian, val)
+	return 
+}
+
+func (val *Int8) Unpack(packet []byte) (err error) {
+	err = binary.Read(bytes.NewBuffer(packet), binary.LittleEndian, val)
+	return 
+}
+
+func (val *String) Unpack(packet []byte) (err error) {
+	*val = String(bytes.NewBuffer(packet).String())
+	return 
+}
+
 
 func Connect(addr string) (conn *Connection, err error) {
 	ipr, err := iproto.Connect(addr)
@@ -50,7 +109,7 @@ func (conn *Connection) Space(spaceNo int32) (space *Space) {
 	return
 }
 
-func (space *Space) Select(indexNo, offset, limit int32, keys ... *SelectField) (tuples *TupleResponse, err error) {
+func (space *Space) Select(indexNo, offset, limit int32, typeToReturn TypeToReturn, keys ... []SelectKey) (tuples *TupleResponse, err error) {
 
 	body := new(bytes.Buffer)
 
@@ -62,17 +121,12 @@ func (space *Space) Select(indexNo, offset, limit int32, keys ... *SelectField) 
 	}
 
 	for _, key := range keys {
-		binary.Write(body, binary.LittleEndian, key.Cardinality)
-		fieldLength := key.Fields.Len()
-		buf := make([]byte, 8)
-		l := binary.PutUvarint(buf, uint64(fieldLength))
-		_, err = body.Write(buf[0:l])
+		err = binary.Write(body, binary.LittleEndian, int32(len(key)))
 		if err != nil {
 			return
 		}
-		_, err = body.Write(key.Fields.Bytes())
-		if err != nil {
-			return
+		for _, field := range key {
+			field.Pack(body)
 		}
 	}
 
@@ -101,13 +155,13 @@ func (space *Space) Select(indexNo, offset, limit int32, keys ... *SelectField) 
 	if err != nil {
 		return
 	}
-	err = binary.Read(response.Body, binary.LittleEndian, &tuplesSize)
-	if err != nil {
-		return
-	}
 	tuples = &TupleResponse{ tuplesCount, make([]Tuple, tuplesCount) }
 
 	for i := int32(0); i < tuplesCount; i++ {
+		err = binary.Read(response.Body, binary.LittleEndian, &tuplesSize)
+		if err != nil {
+			return
+		}
 		err = binary.Read(response.Body, binary.LittleEndian, &cardinality)
 		if err != nil {
 			return
@@ -126,27 +180,6 @@ func (space *Space) Select(indexNo, offset, limit int32, keys ... *SelectField) 
 			}
 		}
 	}
-
 	return
 }
-
-func (tuple *Tuple) PackTuple(buffer *bytes.Buffer) {
-	binary.Write(buffer, binary.LittleEndian, len(tuple.Fields))
-
-	for _, key := range tuple.Fields {
-		fieldLength := key.Fields.Len()
-		buf := make([]byte, 8)
-		l := binary.PutUvarint(buf, uint64(fieldLength))
-		_, err = body.Write(buf[0:l])
-		if err != nil {
-			return
-		}
-		_, err = body.Write(key.Fields.Bytes())
-		if err != nil {
-			return
-		}
-	}
-
-}
-
 // func (space *Space) Insert()
