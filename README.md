@@ -20,38 +20,11 @@ import (
 )
 
 type Employee struct {
-	id   int32   // index 0
-	name string  // index 1
-	job  string
-	age  int8
-}
-
-type SelectId struct {
-	cardinality int32
-	id          int32
-}
-
-type SelectName struct {
-	cardinality int32
-	name        string
-}
-
-func (tuple *SelectId) Pack(buffer *bytes.Buffer) (err error) {
-	err = binary.Write(buffer, binary.LittleEndian, tuple.cardinality)
-	if err != nil {
-		return
-	}
-	err = binary.Write(buffer, binary.LittleEndian, tuple.id)
-	return
-}
-
-func (tuple *SelectName) Pack(buffer *bytes.Buffer) (err error) {
-	err = binary.Write(buffer, binary.LittleEndian, tuple.cardinality)
-	if err != nil {
-		return
-	}
-	err = buffer.Write(bytes.NewBuffer(tuple.name).Bytes())
-	return
+	name      tarantool.String  // index 0
+	id        tarantool.Int32   // index 1
+	job       tarantool.String
+	age       tarantool.Int8
+	bestYears []tarantool.Int8
 }
 
 func (tuple Employee) Unpack(bytes [][]byte) err error {

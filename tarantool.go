@@ -187,6 +187,22 @@ func (space *Space) insert(flags int32, returnTuple bool, tuple []TupleField) (t
 	return
 }
 
+func (space *Space) Update() {
+
+}
+
+func (space *Space) Delete() {
+
+}
+
+func (space *Space) Call() {
+
+}
+
+func (space *Space) Ping() {
+	
+}
+
 func (space *Space) request(requestId int32, body *bytes.Buffer) (tuples *TupleResponse, err error) {
 	var (
 		returnCode  int32
