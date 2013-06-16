@@ -19,10 +19,10 @@ const (
 	PingOp   = 65280
 
 	// Flags
-	BoxFlags       = 0x00
-	BoxReturnTuple = 0x01
-	BoxAdd         = 0x02
-	BoxReplace     = 0x04
+	BoxFlags       = int32(0x00)
+	BoxReturnTuple = int32(0x01)
+	BoxAdd         = int32(0x02)
+	BoxReplace     = int32(0x04)
 
 	// Update Ops
 	OpAdd    = 1
@@ -211,6 +211,7 @@ func (space *Space) Update() {
 // Refactor: same as Insert but Op number
 func (space *Space) Delete(tuple []TupleField, returnTuple bool) (tuples *TupleResponse, err error) {
 	body := new(bytes.Buffer)
+	flags := BoxFlags
 
 	if returnTuple == true {
 		flags |= BoxReturnTuple
