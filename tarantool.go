@@ -1,3 +1,5 @@
+// Tarantool protocol https://github.com/mailru/tarantool/blob/master/doc/box-protocol.txt
+
 package tarantool
 
 import (
@@ -5,16 +7,31 @@ import (
 	"github.com/fl00r/go-iproto"
 	"bytes"
 	"encoding/binary"
-	// "errors"
 )
 
 const (
+	// Ops
 	SelectOp = 17
 	InsertOp = 13
 	UpdateOp = 19
 	DeleteOp = 21
 	CallOp   = 22
 	PingOp   = 65280
+
+	// Flags
+	BoxFlags       = 0x00
+	BoxReturnTuple = 0x01
+	BoxAdd         = 0x02
+	BoxReplace     = 0x04
+
+	// Update Ops
+	OpAdd    = 1
+	OpAnd    = 2
+	OpXor    = 3
+	OpOr     = 4
+	OpSplice = 5
+	OpDelete = 6
+	OpInsert = 7
 )
 
 type Space struct {
@@ -144,20 +161,20 @@ func (space *Space) Select(indexNo, offset, limit int32, typeToReturn TypeToRetu
 }
 
 func (space *Space) Insert(tuple []TupleField, returnTuple bool) (tuples *TupleResponse, err error) {
-	flags := int32(0)
+	flags := BoxFlags
 	tuples, err = space.insert(flags, returnTuple, tuple)
 	return
 }
 
 func (space *Space) Add(tuple []TupleField, returnTuple bool) (tuples *TupleResponse, err error) {
-	flags := int32(2)
+	flags := BoxAdd
 	tuples, err = space.insert(flags, returnTuple, tuple)
 	return
 
 }
 
 func (space *Space) Replace(tuple []TupleField, returnTuple bool) (tuples *TupleResponse, err error) {
-	flags := int32(4)
+	flags := BoxReplace
 	tuples, err = space.insert(flags, returnTuple, tuple)
 	return
 
@@ -167,7 +184,7 @@ func (space *Space) insert(flags int32, returnTuple bool, tuple []TupleField) (t
 	body := new(bytes.Buffer)
 
 	if returnTuple == true {
-		flags |= 1
+		flags |= BoxReturnTuple
 	}
 
 	requestBody := []int32{ space.spaceNo, flags }
@@ -191,8 +208,29 @@ func (space *Space) Update() {
 
 }
 
-func (space *Space) Delete() {
+// Refactor: same as Insert but Op number
+func (space *Space) Delete(tuple []TupleField, returnTuple bool) (tuples *TupleResponse, err error) {
+	body := new(bytes.Buffer)
 
+	if returnTuple == true {
+		flags |= BoxReturnTuple
+	}
+
+	requestBody := []int32{ space.spaceNo, flags }
+	err = binary.Write(body, binary.LittleEndian, requestBody)
+	if err != nil {
+		return
+	}
+
+	err = binary.Write(body, binary.LittleEndian, int32(len(tuple)))
+	if err != nil {
+		return
+	}
+	for _, field := range tuple {
+		field.Pack(body)
+	}
+	tuples, err = space.request(DeleteOp, body)
+	return
 }
 
 func (space *Space) Call() {
@@ -200,7 +238,7 @@ func (space *Space) Call() {
 }
 
 func (space *Space) Ping() {
-	
+
 }
 
 func (space *Space) request(requestId int32, body *bytes.Buffer) (tuples *TupleResponse, err error) {
