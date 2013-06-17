@@ -135,7 +135,7 @@ func (conn *Connection) Space(spaceNo int32) (space *Space) {
 	return
 }
 
-func (space *Space) Select(indexNo, offset, limit int32, typeToReturn TypeToReturn, keys ... []TupleField) (tuples *TupleResponse, err error) {
+func (space *Space) Select(indexNo, offset, limit int32, keys ... []TupleField) (tuples *TupleResponse, err error) {
 
 	body := new(bytes.Buffer)
 

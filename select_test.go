@@ -2,7 +2,7 @@ package tarantool
 
 import (
 	"testing"
-	"fmt"
+	// "fmt"
 )
 
 type Employee struct {
@@ -27,83 +27,61 @@ func (employee *Employee) Unpack(cortege [][]byte) (err error) {
 	return
 }
 
+func TestInsert(t *testing.T) {
+	conn, _ := Connect("localhost:33013")
+	space := conn.Space(0)
+
+	tuple := []TupleField{ String("Linda"), Int32(3), String("rider"), Int32(21) }
+	res, err := space.Insert(tuple, true)
+
+	if err != nil {
+		t.Errorf("Error: %s", err.Error())
+	}
+	if res.Count != 1 {
+		t.Errorf("1 tuple should be added not %d", res.Count)
+	}
+}
+
 func TestSelect(t *testing.T) {
-	var res *TupleResponse
+	conn, _ := Connect("localhost:33013")
+	space := conn.Space(0)
 
-	conn, err := Connect("localhost:33013")
+	res, err := space.Select(0, 0, 10, []TupleField{ String("Linda") }, []TupleField{ String("Mary") })
+
 	if err != nil {
 		t.Errorf("Error: %s", err.Error())
 	}
+	if res.Count != 1 {
+		t.Errorf("1 tuple should be selected not %d", res.Count)
+	}
 
-	space := conn.Space(21)
+	tuple := []TupleField{ String("Mary"), Int32(3), String("singer"), Int32(25) }
+	space.Insert(tuple, true)
 
-	tuple1 := []TupleField{ String("Linda"), Int32(3), String("rider"), Int32(21) }
-	res, err = space.Insert(tuple1, true)
+	res, err = space.Select(0, 0, 10, []TupleField{ String("Linda") }, []TupleField{ String("Mary") })
+
 	if err != nil {
 		t.Errorf("Error: %s", err.Error())
 	}
-
-	fmt.Println(res.Count)
-
-	for i := int32(0); i < res.Count; i++ {
-		emp := &Employee{}
-		err = emp.Unpack(res.Tuples[i].Fields)
-		if err != nil {
-			t.Errorf("Error: %s", err.Error())
-		}
-		fmt.Println(emp)
+	if res.Count != 2 {
+		t.Errorf("2 tuples should be selected not %d", res.Count)
 	}
+}
 
-
-
-	tuple2 := []TupleField{ String("Linda"), Int32(3), String("monkey"), Int32(21) }
-	res, err = space.Insert(tuple2, true)
-	if err != nil {
-		t.Errorf("Error: %s", err.Error())
-	}
-
-	for i := int32(0); i < res.Count; i++ {
-		emp := &Employee{}
-		err = emp.Unpack(res.Tuples[i].Fields)
-		if err != nil {
-			t.Errorf("Error: %s", err.Error())
-		}
-		fmt.Println(emp)
-	}
-
-
-	key1 := []TupleField{ Int32(1) }
-	key2 := []TupleField{ Int32(2) }
-	key3 := []TupleField{ Int32(3) }
-	var limit int32 = 10
-	res, err = space.Select(1, 0, limit, &Employee{}, key1, key2, key3)
-	if err != nil {
-		t.Errorf("Error: %s", err.Error())
-	}
-
-	for i := int32(0); i < res.Count; i++ {
-		emp := &Employee{}
-		err = emp.Unpack(res.Tuples[i].Fields)
-		if err != nil {
-			t.Errorf("Error: %s", err.Error())
-		}
-		fmt.Println(emp)
-	}
-
+func TestDelete(t *testing.T) {
+	conn, _ := Connect("localhost:33013")
+	space := conn.Space(0)
 
 	key := []TupleField{ String("Linda") }
-	res, err = space.Delete(key, true)
+	res, err := space.Delete(key, true)
+
 	if err != nil {
 		t.Errorf("Error: %s", err.Error())
 	}
-
-	for i := int32(0); i < res.Count; i++ {
-		emp := &Employee{}
-		err = emp.Unpack(res.Tuples[i].Fields)
-		if err != nil {
-			t.Errorf("Error: %s", err.Error())
-		}
-		fmt.Println(emp)
+	if res.Count != 1 {
+		t.Errorf("1 tuple should be deleted not %d", res.Count)
 	}
 
+	key = []TupleField{ String("Mary") }
+	space.Delete(key, true)
 }
