@@ -104,6 +104,22 @@ func TestCall(t *testing.T) {
 	if res.Count != 1 {
 		t.Errorf("1 tuples should be returned not %d", res.Count)
 	}
+
+	res, err = space.Call("box.dostring", true, []TupleField{ String("return box.space[0].index[0]:len()") })
+
+	if err != nil {
+		t.Errorf("Error: %s", err.Error())
+	}
+	var count Int32
+	count.Unpack(res.Tuples[0].Fields[0])
+
+	if count != 2 {
+		t.Errorf("Count should be 2 not %d", count)
+	}
+
+	if res.Count != 1 {
+		t.Errorf("1 tuples should be returned not %d", res.Count)
+	}
 }
 
 // func TestPerformance(t *testing.T) {
