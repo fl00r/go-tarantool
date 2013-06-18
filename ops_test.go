@@ -2,7 +2,6 @@ package tarantool
 
 import (
 	"testing"
-	// "fmt"
 )
 
 type Employee struct {
@@ -31,8 +30,14 @@ func TestInsert(t *testing.T) {
 	conn, _ := Connect("localhost:33013")
 	space := conn.Space(0)
 
+	res, err := space.Select(0, 0, 10, []TupleField{ String("Linda") }, []TupleField{ String("Mary") })
+
+	if res.Count != 0 {
+		t.Errorf("0 tuple should be added not %d", res.Count)
+	}
+
 	tuple := []TupleField{ String("Linda"), Int32(1), String("rider"), Int32(21) }
-	res, err := space.Insert(tuple, true)
+	res, err = space.Insert(tuple, true)
 
 	if err != nil {
 		t.Errorf("Error: %s", err.Error())
@@ -75,6 +80,33 @@ func TestSelectAddReplace(t *testing.T) {
 	}
 	if res.Count != 2 {
 		t.Errorf("2 tuples should be selected not %d", res.Count)
+	}
+}
+
+func TestUpdate(t *testing.T) {
+	conn, _ := Connect("localhost:33013")
+	space := conn.Space(0)
+
+	tuple := []TupleField{ String("Linda") }
+	field1 := UpdOp{ 2, OpEq, String("dancer") }
+	field2 := UpdOp{ 3, OpAdd, Int32(1) }
+	res, err := space.Update(tuple, true, field1, field2)
+
+	if err != nil {
+		t.Errorf("Error: %s", err.Error())
+	}
+
+	var lindaJob String
+	var lindaAge Int32
+	lindaJob.Unpack(res.Tuples[0].Fields[2])
+	lindaAge.Unpack(res.Tuples[0].Fields[3])
+
+	if lindaJob != "dancer" {
+		t.Errorf("Error: Linda's job should be replaced with dancer, not %s", lindaJob)
+	}
+
+	if lindaAge != 22 {
+		t.Errorf("Error: Linda's age should be 22, noy %d", lindaAge)
 	}
 }
 

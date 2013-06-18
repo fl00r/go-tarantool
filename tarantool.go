@@ -25,13 +25,14 @@ const (
 	BoxReplace     = int32(0x04)
 
 	// Update Ops
-	OpAdd    = 1
-	OpAnd    = 2
-	OpXor    = 3
-	OpOr     = 4
-	OpSplice = 5
-	OpDelete = 6
-	OpInsert = 7
+	OpEq     = int8(0)
+	OpAdd    = int8(1)
+	OpAnd    = int8(2)
+	OpXor    = int8(3)
+	OpOr     = int8(4)
+	OpSplice = int8(5)
+	OpDelete = int8(6)
+	OpInsert = int8(7)
 )
 
 type Space struct {
@@ -58,6 +59,12 @@ type TupleResponse struct {
 
 type Tuple struct {
 	Fields [][]byte
+}
+
+type UpdOp struct {
+	FieldNo int32
+	OpCode  int8
+	Field   TupleField
 }
 
 type Int32 int32
@@ -204,8 +211,61 @@ func (space *Space) insert(flags int32, returnTuple bool, tuple []TupleField) (t
 	return
 }
 
-func (space *Space) Update() {
+func (space *Space) Update(tuple []TupleField, returnTuple bool, ops ... UpdOp) (tuples *TupleResponse, err error) {
+	flags := BoxFlags
+	tuples, err = space.update(flags, returnTuple, tuple, ops)
+	return
+}
 
+func (space *Space) Upsert() {
+
+}
+
+func (space *Space) update(flags int32, returnTuple bool, tuple []TupleField, ops []UpdOp) (tuples *TupleResponse, err error) {
+	body := new(bytes.Buffer)
+
+	if returnTuple == true {
+		flags |= BoxReturnTuple
+	}
+
+	requestBody := []int32{ space.spaceNo, flags }
+	err = binary.Write(body, binary.LittleEndian, requestBody)
+	if err != nil {
+		return
+	}
+
+	err = binary.Write(body, binary.LittleEndian, int32(len(tuple)))
+	if err != nil {
+		return
+	}
+
+	for _, field := range tuple {
+		field.Pack(body)
+	}
+
+	opsCount := int32(len(ops))
+	err = binary.Write(body, binary.LittleEndian, opsCount)
+	if err != nil {
+		return
+	}
+
+	for _, op := range ops {
+		err = binary.Write(body, binary.LittleEndian, op.FieldNo)
+		if err != nil {
+			return
+		}
+		err = binary.Write(body, binary.LittleEndian, op.OpCode)
+		if err != nil {
+			return
+		}
+		err = op.Field.Pack(body)
+		if err != nil {
+			return
+		}
+	}
+
+	tuples, err = space.request(UpdateOp, body)
+	return
 }
 
 // Refactor: same as Insert but Op number
@@ -227,9 +287,11 @@ func (space *Space) Delete(tuple []TupleField, returnTuple bool) (tuples *TupleR
 	if err != nil {
 		return
 	}
+
 	for _, field := range tuple {
 		field.Pack(body)
 	}
+
 	tuples, err = space.request(DeleteOp, body)
 	return
 }
@@ -272,7 +334,7 @@ func (space *Space) request(requestId int32, body *bytes.Buffer) (tuples *TupleR
 	}
 	tuples = &TupleResponse{ tuplesCount, make([]Tuple, tuplesCount) }
 
-	for i := int32(0); i < tuplesCount; i++ {
+	for i := int32(0); i < tuplesCount && response.Body.Len() > 0; i++ {
 		err = binary.Read(response.Body, binary.LittleEndian, &tuplesSize)
 		if err != nil {
 			return
