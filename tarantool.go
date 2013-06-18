@@ -1,3 +1,8 @@
+// Tarantool is an in-memory database designed to store the most 
+// volatile and highly accessible web content. 
+// Tarantool has been extensively used in production since 2009. 
+// It's open source, BSD licensed.
+//
 // Tarantool protocol https://github.com/mailru/tarantool/blob/master/doc/box-protocol.txt
 
 package tarantool
@@ -30,7 +35,7 @@ const (
 	OpAnd    = int8(2)
 	OpXor    = int8(3)
 	OpOr     = int8(4)
-	OpSplice = int8(5)
+	OpSplice = int8(5) // not implemented
 	OpDelete = int8(6)
 	OpInsert = int8(7)
 )
@@ -217,10 +222,6 @@ func (space *Space) Update(tuple []TupleField, returnTuple bool, ops ... UpdOp) 
 	return
 }
 
-func (space *Space) Upsert() {
-
-}
-
 func (space *Space) update(flags int32, returnTuple bool, tuple []TupleField, ops []UpdOp) (tuples *TupleResponse, err error) {
 	body := new(bytes.Buffer)
 
@@ -327,8 +328,10 @@ func (space *Space) Call(procName string, returnTuple bool, args []TupleField) (
 	return
 }
 
-func (space *Space) Ping() {
-
+func (space *Space) Ping() (tuples *TupleResponse, err error) {
+	body := new(bytes.Buffer)
+	tuples, err = space.request(PingOp, body)
+	return
 }
 
 func (space *Space) request(requestId int32, body *bytes.Buffer) (tuples *TupleResponse, err error) {
@@ -343,6 +346,12 @@ func (space *Space) request(requestId int32, body *bytes.Buffer) (tuples *TupleR
 
 	response, err = space.conn.Request(requestId, body)
 	if err != nil {
+		return
+	}
+
+	// Ping has no Body
+	if requestId == PingOp {
+		tuples = &TupleResponse{ 0, make([]Tuple, 0) }
 		return
 	}
 

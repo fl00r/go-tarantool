@@ -122,6 +122,19 @@ func TestCall(t *testing.T) {
 	}
 }
 
+func TestPing(t *testing.T) {
+	conn, _ := Connect("localhost:33013")
+	space := conn.Space(0)
+	res, err := space.Ping()
+
+	if err != nil {
+		t.Errorf("Error: %s", err.Error())
+	}
+	if res.Count != 0 {
+		t.Errorf("Ping should return nothing")
+	}
+}
+
 // func TestPerformance(t *testing.T) {
 // 	conn, _ := Connect("localhost:33013")
 // 	space := conn.Space(0)
