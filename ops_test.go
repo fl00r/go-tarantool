@@ -2,6 +2,7 @@ package tarantool
 
 import (
 	"testing"
+	// "fmt"
 )
 
 type Employee struct {
@@ -82,6 +83,46 @@ func TestSelectAddReplace(t *testing.T) {
 		t.Errorf("2 tuples should be selected not %d", res.Count)
 	}
 }
+
+func TestCall(t *testing.T) {
+	conn, _ := Connect("localhost:33013")
+	space := conn.Space(0)
+	res, err := space.Call("box.select_range", true, []TupleField{ String("0"), String("0"), String("10")})
+
+	if err != nil {
+		t.Errorf("Error: %s", err.Error())
+	}
+	if res.Count != 2 {
+		t.Errorf("2 tuples should be returned not %d", res.Count)
+	}
+
+	res, err = space.Call("box.select_range", true, []TupleField{ String("0"), String("1"), String("10"), Int32(2)})
+
+	if err != nil {
+		t.Errorf("Error: %s", err.Error())
+	}
+	if res.Count != 1 {
+		t.Errorf("1 tuples should be returned not %d", res.Count)
+	}
+}
+
+// func TestPerformance(t *testing.T) {
+// 	conn, _ := Connect("localhost:33013")
+// 	space := conn.Space(0)
+// 	ch := make(chan *TupleResponse)
+// 	for i := 0; i < 100000; i++ {
+// 		tuple := []TupleField{ String("Linda"), Int32(1), String("rider"), Int32(21) }
+// 		go goo(space, tuple, ch)
+// 	}
+// 	for i := 0; i < 100000; i++ {
+// 		_ = <- ch
+// 	}
+// }
+
+// func goo(space *Space, tuple []TupleField, ch chan *TupleResponse) {
+// 	res, _ := space.Insert(tuple, true)
+// 	ch <- res
+// }
 
 func TestUpdate(t *testing.T) {
 	conn, _ := Connect("localhost:33013")

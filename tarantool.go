@@ -296,8 +296,35 @@ func (space *Space) Delete(tuple []TupleField, returnTuple bool) (tuples *TupleR
 	return
 }
 
-func (space *Space) Call() {
+func (space *Space) Call(procName string, returnTuple bool, args []TupleField) (tuples *TupleResponse, err error) {
+	body := new(bytes.Buffer)
+	flags := BoxFlags
 
+	if returnTuple == true {
+		flags |= BoxReturnTuple
+	}
+
+	err = binary.Write(body, binary.LittleEndian, flags)
+	if err != nil {
+		return
+	}
+
+	err = String(procName).Pack(body)
+	if err != nil {
+		return
+	}
+
+	err = binary.Write(body, binary.LittleEndian, int32(len(args)))
+	if err != nil {
+		return
+	}
+
+	for _, field := range args {
+		field.Pack(body)
+	}
+
+	tuples, err = space.request(CallOp, body)
+	return
 }
 
 func (space *Space) Ping() {
