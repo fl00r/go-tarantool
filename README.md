@@ -4,19 +4,19 @@
 
 ## Usage
 
->> go run examples/low_level.go:
+    > go run examples/low_level.go
 
 ```go
 package main
 
 import (
 	"github.com/fl00r/go-tarantool"
-	// "bytes"
-	// "encoding/binary"
 	"fmt"
 )
 
+//
 // All error handling is skipped
+//
 func main() {
 	//
 	// ESTABLISHING CONNECTION
@@ -229,3 +229,5 @@ func main() {
 	// Happy hacking!
 }
 ```
+
+Later some unpacking binary data to structs based on reflection will be presented.
