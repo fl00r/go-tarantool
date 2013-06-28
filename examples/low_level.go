@@ -140,7 +140,7 @@ func main() {
 	//   * tarantool.OpOr
 	//   * tarantool.OpSplice
 	//   * tarantool.OpDelete
-	//   * tarantool.OpInsert
+	//   * tarantool.OpPrepend
 	// For more information check tarantool.org documentation.
 
 	// So for space.Update you should specify following arguments:
@@ -168,7 +168,7 @@ func main() {
 	}
 	res, _ = space.Update(updKey, true, updField1, updField2)
 
-	fmt.Println("error", res)
+	fmt.Println(res)
 	//=> [
 	//=>   [ [2 0 0 0] [77 97 114 121] [21] [103 117 105 116 97 114 105 115 116] ]
 	//=> ]

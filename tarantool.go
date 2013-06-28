@@ -31,14 +31,14 @@ const (
 	BoxReplace     = int32(0x04)
 
 	// Update Ops
-	OpEq     = int8(0)
-	OpAdd    = int8(1)
-	OpAnd    = int8(2)
-	OpXor    = int8(3)
-	OpOr     = int8(4)
-	OpSplice = int8(5) // not implemented
-	OpDelete = int8(6)
-	OpInsert = int8(7)
+	OpEq      = int8(0)
+	OpAdd     = int8(1)
+	OpAnd     = int8(2)
+	OpXor     = int8(3)
+	OpOr      = int8(4)
+	OpSplice  = int8(5) // not implemented
+	OpDelete  = int8(6)
+	OpPrepend = int8(7)
 )
 
 type Space struct {
