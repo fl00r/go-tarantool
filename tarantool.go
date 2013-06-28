@@ -12,6 +12,7 @@ import (
 	"github.com/fl00r/go-iproto"
 	"bytes"
 	"encoding/binary"
+	// "reflect"
 )
 
 const (
@@ -147,7 +148,7 @@ func (conn *Connection) Space(spaceNo int32) (space *Space) {
 	return
 }
 
-func (space *Space) Select(indexNo, offset, limit int32, keys ... []TupleField) (tuples *TupleResponse, err error) {
+func (space *Space) Select(indexNo, offset, limit int32, keys ... []TupleField) (tuples [][][]byte, err error) {
 
 	body := new(bytes.Buffer)
 
@@ -172,57 +173,78 @@ func (space *Space) Select(indexNo, offset, limit int32, keys ... []TupleField) 
 	return
 }
 
-func (space *Space) Insert(tuple []TupleField, returnTuple bool) (tuples *TupleResponse, err error) {
+func (space *Space) Insert(tuple []TupleField, returnTuple bool) (tuples [][][]byte, err error) {
 	flags := BoxFlags
 	tuples, err = space.insert(flags, returnTuple, tuple)
 	return
 }
 
-func (space *Space) Add(tuple []TupleField, returnTuple bool) (tuples *TupleResponse, err error) {
+func (space *Space) Add(tuple []TupleField, returnTuple bool) (tuples [][][]byte, err error) {
 	flags := BoxAdd
 	tuples, err = space.insert(flags, returnTuple, tuple)
 	return
 
 }
 
-func (space *Space) Replace(tuple []TupleField, returnTuple bool) (tuples *TupleResponse, err error) {
+func (space *Space) Replace(tuple []TupleField, returnTuple bool) (tuples [][][]byte, err error) {
 	flags := BoxReplace
 	tuples, err = space.insert(flags, returnTuple, tuple)
 	return
 
 }
 
-func (space *Space) insert(flags int32, returnTuple bool, tuple []TupleField) (tuples *TupleResponse, err error) {
+func (space *Space) insert(flags int32, returnTuple bool, tuple []TupleField) (tuples [][][]byte, err error) {
 	body := new(bytes.Buffer)
 
 	if returnTuple == true {
 		flags |= BoxReturnTuple
 	}
 
-	requestBody := []int32{ space.spaceNo, flags }
+	requestBody := []int32{ space.spaceNo, flags, int32(len(tuple)) }
 	err = binary.Write(body, binary.LittleEndian, requestBody)
 	if err != nil {
 		return
 	}
 
-	err = binary.Write(body, binary.LittleEndian, int32(len(tuple)))
-	if err != nil {
-		return
-	}
 	for _, field := range tuple {
-		field.Pack(body)
+		err = field.Pack(body)
+		if err != nil {
+			return
+		}
 	}
 	tuples, err = space.request(InsertOp, body)
 	return
 }
 
-func (space *Space) Update(tuple []TupleField, returnTuple bool, ops ... UpdOp) (tuples *TupleResponse, err error) {
+// func (space *Space) insert(flags int32, returnTuple bool, tuple interface{}) (tuples [][][]byte, err error) {
+// 	body := new(bytes.Buffer)
+
+// 	if returnTuple == true {
+// 		flags |= BoxReturnTuple
+// 	}
+
+// 	actualTuple := reflect.ValueOf(tuple).Elem()
+// 	requestBody := []int32{ space.spaceNo, flags, int32(actualTuple.NumField()-1) }
+// 	err = binary.Write(body, binary.LittleEndian, requestBody)
+// 	if err != nil {
+// 		return
+// 	}
+
+// 	bodyReflect := reflect.ValueOf(body)
+// 	for i := 0; i < actualTuple.NumField(); i++ {
+// 		actualTuple.Field(i).MethodByName("Pack").Call([]reflect.Value{ bodyReflect })
+// 	}
+// 	tuples, err = space.request(InsertOp, body)
+// 	return
+// }
+
+func (space *Space) Update(tuple []TupleField, returnTuple bool, ops ... UpdOp) (tuples [][][]byte, err error) {
 	flags := BoxFlags
 	tuples, err = space.update(flags, returnTuple, tuple, ops)
 	return
 }
 
-func (space *Space) update(flags int32, returnTuple bool, tuple []TupleField, ops []UpdOp) (tuples *TupleResponse, err error) {
+func (space *Space) update(flags int32, returnTuple bool, tuple []TupleField, ops []UpdOp) (tuples [][][]byte, err error) {
 	body := new(bytes.Buffer)
 
 	if returnTuple == true {
@@ -270,7 +292,7 @@ func (space *Space) update(flags int32, returnTuple bool, tuple []TupleField, op
 }
 
 // Refactor: same as Insert but Op number
-func (space *Space) Delete(tuple []TupleField, returnTuple bool) (tuples *TupleResponse, err error) {
+func (space *Space) Delete(tuple []TupleField, returnTuple bool) (tuples [][][]byte, err error) {
 	body := new(bytes.Buffer)
 	flags := BoxFlags
 
@@ -297,7 +319,7 @@ func (space *Space) Delete(tuple []TupleField, returnTuple bool) (tuples *TupleR
 	return
 }
 
-func (space *Space) Call(procName string, returnTuple bool, args []TupleField) (tuples *TupleResponse, err error) {
+func (space *Space) Call(procName string, returnTuple bool, args ... TupleField) (tuples [][][]byte, err error) {
 	body := new(bytes.Buffer)
 	flags := BoxFlags
 
@@ -328,13 +350,13 @@ func (space *Space) Call(procName string, returnTuple bool, args []TupleField) (
 	return
 }
 
-func (space *Space) Ping() (tuples *TupleResponse, err error) {
+func (space *Space) Ping() (tuples [][][]byte, err error) {
 	body := new(bytes.Buffer)
 	tuples, err = space.request(PingOp, body)
 	return
 }
 
-func (space *Space) request(requestId int32, body *bytes.Buffer) (tuples *TupleResponse, err error) {
+func (space *Space) request(requestId int32, body *bytes.Buffer) (tuples [][][]byte, err error) {
 	var (
 		returnCode  int32
 		tuplesCount int32
@@ -351,7 +373,7 @@ func (space *Space) request(requestId int32, body *bytes.Buffer) (tuples *TupleR
 
 	// Ping has no Body
 	if requestId == PingOp {
-		tuples = &TupleResponse{ 0, make([]Tuple, 0) }
+		tuples = [][][]byte{}
 		return
 	}
 
@@ -368,7 +390,7 @@ func (space *Space) request(requestId int32, body *bytes.Buffer) (tuples *TupleR
 	if err != nil {
 		return
 	}
-	tuples = &TupleResponse{ tuplesCount, make([]Tuple, tuplesCount) }
+	tuples = make([][][]byte, tuplesCount)
 
 	for i := int32(0); i < tuplesCount && response.Body.Len() > 0; i++ {
 		err = binary.Read(response.Body, binary.LittleEndian, &tuplesSize)
@@ -379,14 +401,14 @@ func (space *Space) request(requestId int32, body *bytes.Buffer) (tuples *TupleR
 		if err != nil {
 			return
 		}
-		tuples.Tuples[i] = Tuple{ make([][]byte, cardinality) }
+		tuples[i] = make([][]byte, cardinality)
 		for j := int32(0); j < cardinality; j++ {
 			size, err = binary.ReadUvarint(response.Body)
 			if err != nil {
 				return
 			}
-			tuples.Tuples[i].Fields[j] = make([]byte, size)
-			_, err = response.Body.Read(tuples.Tuples[i].Fields[j])
+			tuples[i][j] = make([]byte, size)
+			_, err = response.Body.Read(tuples[i][j])
 			if err != nil {
 				return
 			}

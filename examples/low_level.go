@@ -1,12 +1,3 @@
-# Go, Tarantool, Go
-
-[Tarantool](http://tarantool.org/) client on Go.
-
-## Usage
-
-examples/low_level.go:
-
-```go
 package main
 
 import (
@@ -228,4 +219,3 @@ func main() {
 
 	// Happy hacking!
 }
-```
